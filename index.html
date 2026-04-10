@@ -76,6 +76,19 @@ canvas{border:3px solid #1a3a6a;box-shadow:0 0 40px #0044ff55;display:block;}
 
 /* powerup msg */
 #powerupMsg{position:absolute;left:50%;transform:translateX(-50%);font-family:'Press Start 2P',monospace;font-size:8px;white-space:nowrap;pointer-events:none;transition:opacity .3s;}
+
+/* === ONLINE MULTIPLAYER UI === */
+#onlineOv{z-index:25;}
+#onlineOv h2{font-size:13px;margin-bottom:4px;}
+.room-input{font-family:'Press Start 2P',monospace;font-size:10px;background:#0d1a2a;color:#88ccff;border:2px solid #2244aa;padding:8px 12px;text-align:center;width:220px;outline:none;}
+.room-input:focus{border-color:#4488ff;}
+#onlineStatus{font-family:'Press Start 2P',monospace;font-size:8px;color:#88ffaa;text-align:center;min-height:20px;}
+#onlineStatusDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#666;margin-left:6px;vertical-align:middle;}
+#onlineStatusDot.connected{background:#44ff88;box-shadow:0 0 8px #44ff88;}
+#onlineStatusDot.waiting{background:#ffaa00;box-shadow:0 0 8px #ffaa00;animation:blink .8s step-start infinite;}
+#onlineStatusDot.error{background:#ff4444;box-shadow:0 0 8px #ff4444;}
+#roomCodeDisplay{font-family:'Press Start 2P',monospace;font-size:14px;color:#ffe600;text-shadow:0 0 16px #ffe600;letter-spacing:4px;margin:4px 0;}
+#copyRoomBtn{font-family:'Press Start 2P',monospace;font-size:7px;background:#1a2a1a;color:#44ff88;border:1px solid #44ff88;padding:4px 10px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -88,6 +101,7 @@ canvas{border:3px solid #1a3a6a;box-shadow:0 0 40px #0044ff55;display:block;}
   <span id="timer">5:00</span>
   <span id="dia2" style="color:#ff4466;font-size:8px;">💎 0</span>
   <span id="p2score">שחקן 2: 0</span>
+  <span id="onlineStatusDot"></span>
 </div>
 
 <div style="position:relative;display:inline-block;">
@@ -102,8 +116,9 @@ canvas{border:3px solid #1a3a6a;box-shadow:0 0 40px #0044ff55;display:block;}
       <div class="diamonds-display" style="color:#ff4466;">שחקן 2 💎 <span id="menuDia2">0</span></div>
     </div>
     <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#aaaacc;text-align:center;">בחר מצב משחק:</div>
-    <button class="menu-btn" onclick="selectMode('2p')">👥 שני שחקנים</button>
+    <button class="menu-btn" onclick="selectMode('2p')">👥 שני שחקנים (מקומי)</button>
     <button class="menu-btn" id="btnBot" onclick="selectMode('bot')">🤖 נגד בוט</button>
+    <button class="menu-btn" style="background:#0d2a1a;color:#44ffaa;border-color:#22aa66;" onclick="openOnlineMenu()">🌐 מולטיפלייר אונליין</button>
     <div class="diff-row" id="diffRow" style="display:none;">
       <button class="diff-btn sel" id="db1" onclick="selectDiff(1)">קל 🟢</button>
       <button class="diff-btn" id="db2" onclick="selectDiff(2)">בינוני 🟡</button>
@@ -115,6 +130,32 @@ canvas{border:3px solid #1a3a6a;box-shadow:0 0 40px #0044ff55;display:block;}
       <button class="menu-btn" id="shopBtn2" onclick="openShop(2)" style="min-width:150px;font-size:9px;background:#2a1a1a;color:#ff4466;border-color:#aa2233;">🛍 חנות שחקן 2</button>
     </div>
     <p style="font-size:7px;">שחקן 1: חצים | שחקן 2/בוט: W A S D<br>נצח כדי לקבל 💎 יהלומים!</p>
+  </div>
+
+  <!-- ONLINE MULTIPLAYER OVERLAY -->
+  <div id="onlineOv" class="ov">
+    <h2>🌐 מולטיפלייר אונליין</h2>
+    <div id="onlineStatus">בחר אפשרות</div>
+
+    <div id="onlineCreateSection">
+      <button class="menu-btn active" onclick="createOnlineRoom()">✨ צור חדר חדש</button>
+    </div>
+
+    <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#667799;">— או הצטרף לחדר קיים —</div>
+
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input id="joinCodeInput" class="room-input" maxlength="6" placeholder="קוד חדר" style="width:140px;text-align:center;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()"/>
+      <button class="menu-btn" style="min-width:100px;" onclick="joinOnlineRoom()">הצטרף ▶</button>
+    </div>
+
+    <div id="waitingSection" style="display:none;text-align:center;gap:8px;flex-direction:column;align-items:center;">
+      <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#aaaacc;">קוד החדר שלך:</div>
+      <div id="roomCodeDisplay">------</div>
+      <button id="copyRoomBtn" onclick="copyRoomCode()">📋 העתק קוד</button>
+      <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#ffaa00;">⏳ ממתין לשחקן שני...</div>
+    </div>
+
+    <button class="menu-btn" style="background:#2a0a0a;color:#ff6666;border-color:#aa2222;" onclick="cancelOnline()">✖ ביטול</button>
   </div>
 
   <!-- ROLE ANNOUNCE -->
@@ -159,12 +200,51 @@ canvas{border:3px solid #1a3a6a;box-shadow:0 0 40px #0044ff55;display:block;}
   <div class="fl"><span>🥭</span><span style="color:#ffaa00">גנוב</span></div>
 </div>
 
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+import { getDatabase, ref, set, onValue, get, remove, onDisconnect, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDpJOtqoSB4JAbh6AgGP5OtLVQFd6Tsdlk",
+  authDomain: "pacman-gtnk1.firebaseapp.com",
+  projectId: "pacman-gtnk1",
+  storageBucket: "pacman-gtnk1.firebasestorage.app",
+  messagingSenderId: "789579089664",
+  appId: "1:789579089664:web:a7709f91c831543ca555e5",
+  measurementId: "G-8XVX9FNEMS",
+  databaseURL: "https://pacman-gtnk1-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getDatabase(app);
+
+// ─── Analytics helper ───────────────────────────────────────────
+window.gaEvent = function(name, params={}) {
+  try { logEvent(analytics, name, params); } catch(e) {}
+};
+
+// ─── Realtime DB helpers ─────────────────────────────────────────
+window._db = db;
+window._ref = ref;
+window._set = set;
+window._onValue = onValue;
+window._get = get;
+window._remove = remove;
+window._onDisconnect = onDisconnect;
+window._serverTimestamp = serverTimestamp;
+
+console.log("🔥 Firebase ready");
+</script>
+
 <script>
 // ============================================================
 //  SHOP DATA
 // ============================================================
 const SHOP_ITEMS = [
-  // Colors (for pacman body)
   {id:'col_yellow', type:'color', name:'צהוב', emoji:'🟡', color:'#ffe600', price:0, default:true},
   {id:'col_cyan',   type:'color', name:'ציאן',  emoji:'🔵', color:'#00ffee', price:15},
   {id:'col_pink',   type:'color', name:'ורוד',  emoji:'🩷', color:'#ff44cc', price:15},
@@ -173,7 +253,6 @@ const SHOP_ITEMS = [
   {id:'col_purple', type:'color', name:'סגול',  emoji:'🟣', color:'#cc44ff', price:25},
   {id:'col_white',  type:'color', name:'לבן',   emoji:'⚪', color:'#ffffff', price:30},
   {id:'col_red',    type:'color', name:'אדום',  emoji:'🔴', color:'#ff2222', price:35},
-  // Accessories (drawn on top of pacman)
   {id:'acc_hat',    type:'acc', name:'כובע',    emoji:'🎩', price:20},
   {id:'acc_glasses',type:'acc', name:'משקפיים', emoji:'🕶', price:25},
   {id:'acc_crown',  type:'acc', name:'כתר',     emoji:'👑', price:40},
@@ -181,7 +260,7 @@ const SHOP_ITEMS = [
 ];
 
 // ============================================================
-//  SAVE DATA — per player
+//  SAVE DATA
 // ============================================================
 const DEFAULT_SAVE = (defaultColor) => ({
   diamonds: 0,
@@ -216,7 +295,7 @@ function getPlayerColor(pn){
   return item?item.color:(pn===1?'#ffe600':'#ff4466');
 }
 
-let currentShopPlayer=1; // which player's shop is open
+let currentShopPlayer=1;
 
 // ============================================================
 //  CANVAS / MAZE
@@ -248,13 +327,11 @@ function isWall(c,r){
   return MAZE[r][c]===1;
 }
 
-// Build open cells list for BFS
 const OPEN_CELLS=[];
 for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(!isWall(c,r)) OPEN_CELLS.push({c,r});
 
 function cellOf(x,y){ return {c:Math.round((x-BW/2)/BW), r:Math.round((y-BH/2)/BH)}; }
 
-// BFS pathfinding
 function bfs(sc,sr,tc,tr){
   if(sc===tc&&sr===tr) return [];
   const visited=new Set();
@@ -324,8 +401,20 @@ let p1,p2;
 let keysDown={},gameRunning=false,animId=null,caughtTimer=0;
 let gameMode='2p', botDifficulty=1;
 
-window.addEventListener('keydown',e=>{keysDown[e.code]=true;e.preventDefault();},{passive:false});
-window.addEventListener('keyup',e=>{keysDown[e.code]=false;});
+window.addEventListener('keydown',e=>{
+  keysDown[e.code]=true;
+  e.preventDefault();
+  // Online: send key to Firebase
+  if(gameMode==='online' && onlineRole && gameRunning){
+    pushOnlineInput(e.code, true);
+  }
+},{passive:false});
+window.addEventListener('keyup',e=>{
+  keysDown[e.code]=false;
+  if(gameMode==='online' && onlineRole && gameRunning){
+    pushOnlineInput(e.code, false);
+  }
+});
 
 // ============================================================
 //  BOT AI
@@ -333,9 +422,9 @@ window.addEventListener('keyup',e=>{keysDown[e.code]=false;});
 let botPath=[], botPathTimer=0;
 
 const BOT_SETTINGS={
-  1:{speed:1.6, replanEvery:90,  randomChance:0.5,  fruitSeek:false}, // קל  — איטי, אקראי, לא מחפש פירות
-  2:{speed:2.6, replanEvery:30,  randomChance:0.18, fruitSeek:true},  // בינוני
-  3:{speed:3.3, replanEvery:8,   randomChance:0.04, fruitSeek:true},  // קשה — כמעט מושלם
+  1:{speed:1.6, replanEvery:90,  randomChance:0.5,  fruitSeek:false},
+  2:{speed:2.6, replanEvery:30,  randomChance:0.18, fruitSeek:true},
+  3:{speed:3.3, replanEvery:8,   randomChance:0.04, fruitSeek:true},
 };
 
 function moveBot(bot, opponent){
@@ -349,14 +438,12 @@ function moveBot(bot, opponent){
 
     let targetC=oc.c, targetR=oc.r;
 
-    // fruit seeking on harder modes
     if(cfg.fruitSeek && fruits.filter(f=>!f.eaten).length>0 && Math.random()<0.5){
       let bestFruit=null, bestScore=-999;
       for(const f of fruits){
         if(f.eaten) continue;
         const fc=cellOf(f.x,f.y);
         const dist=Math.abs(fc.c-bc.c)+Math.abs(fc.r-bc.r);
-        // prefer high-value fruits
         let val=1;
         if(f.type.effect==='points') val=f.type.value*2;
         if(f.type.effect==='speed'||f.type.effect==='double') val=8;
@@ -370,15 +457,11 @@ function moveBot(bot, opponent){
       }
     }
 
-    // if ghost, chase pacman; if pacman, run from ghost OR eat dots
     if(bot.role==='ghost'){
-      // chase opponent
       botPath=bfs(bc.c,bc.r,targetC,targetR);
     } else {
-      // pacman: if close to ghost run away, else find nearest dot
       const distToGhost=Math.hypot(bot.x-opponent.x,bot.y-opponent.y);
       if(distToGhost<BW*4){
-        // run away: pick cell furthest from ghost
         let bestCell=null,bestDist=0;
         for(const cell of OPEN_CELLS){
           const d=Math.abs(cell.c-oc.c)+Math.abs(cell.r-oc.r);
@@ -386,7 +469,6 @@ function moveBot(bot, opponent){
         }
         if(bestCell) botPath=bfs(bc.c,bc.r,bestCell.c,bestCell.r);
       } else {
-        // find nearest uneaten dot
         let nearestDot=null,nearestD=999;
         for(const d of dots){
           if(d.eaten) continue;
@@ -400,7 +482,6 @@ function moveBot(bot, opponent){
         }
       }
     }
-    // random deviation
     if(Math.random()<cfg.randomChance) botPath=botPath.slice(0,Math.max(1,Math.floor(botPath.length*0.4)));
   }
 
@@ -513,6 +594,8 @@ function applyFruit(player,fruit){
   el.style.top=Math.min(player.y+40,460)+'px';el.style.opacity='1';
   clearTimeout(el._t);
   el._t=setTimeout(()=>{el.style.opacity='0';},1600);
+  // Analytics: track powerup
+  if(window.gaEvent) window.gaEvent('powerup_collected',{effect:t.effect,player:player.name});
 }
 
 function resetPow(p){
@@ -622,10 +705,14 @@ function drawGhost(p){
   ctx.beginPath();ctx.arc(-SIZE*0.3,-SIZE*0.2,SIZE*0.15,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.arc( SIZE*0.3,-SIZE*0.2,SIZE*0.15,0,Math.PI*2);ctx.fill();
   if(frozen){ctx.font='11px serif';ctx.textAlign='center';ctx.fillStyle='#aaddff';ctx.fillText('❄',0,-SIZE*1.5);}
-  // bot badge
   if(p.isBot){
     ctx.font='9px serif';ctx.textAlign='center';ctx.fillStyle='#fff';
     ctx.fillText('🤖',0,-SIZE*1.6);
+  }
+  // Online remote player indicator
+  if(p.isRemote){
+    ctx.font='9px serif';ctx.textAlign='center';ctx.fillStyle='#44ffaa';
+    ctx.fillText('🌐',0,-SIZE*1.6);
   }
   ctx.restore();
 }
@@ -646,7 +733,7 @@ function drawTimer(){
 
 function updateScores(){
   document.getElementById('p1score').textContent=`שחקן 1 (${p1&&p1.role==='pacman'?'😁':'👻'}): ${p1?p1.score:0}`;
-  const n2=p2&&p2.isBot?'🤖 בוט':gameMode==='2p'?'שחקן 2':'';
+  const n2=p2&&p2.isBot?'🤖 בוט':gameMode==='online'?'🌐 יריב':gameMode==='2p'?'שחקן 2':'';
   document.getElementById('p2score').textContent=`${n2} (${p2&&p2.role==='pacman'?'😁':'👻'}): ${p2?p2.score:0}`;
   document.getElementById('dia1').textContent=`💎 ${saveData.p1.diamonds}`;
   document.getElementById('dia2').textContent=`💎 ${saveData.p2.diamonds}`;
@@ -663,7 +750,7 @@ function lotteryRoles(){
   if(Math.random()<0.5) roles.reverse();
   p1.role=roles[0];p2.role=roles[1];
   const ra=document.getElementById('roleAnnounce');
-  const n2=p2.isBot?'🤖 בוט':'שחקן 2';
+  const n2=p2.isBot?'🤖 בוט':gameMode==='online'?'🌐 יריב':'שחקן 2';
   document.getElementById('rA1').textContent=p1.role==='pacman'?'😁 שחקן 1 = פקמן!':'👻 שחקן 1 = רוח!';
   document.getElementById('rA2').textContent=p2.role==='pacman'?`😁 ${n2} = פקמן!`:`👻 ${n2} = רוח!`;
   document.getElementById('rA1').className='role-line '+(p1.role==='pacman'?'pacman-role':'ghost-role');
@@ -687,6 +774,7 @@ function selectMode(mode){
   document.getElementById('diffRow').style.display=mode==='bot'?'flex':'none';
   document.getElementById('ctrl2lbl').textContent=mode==='bot'?'בוט: AI 🤖':'שחקן 2 W A S D';
 }
+window.selectMode=selectMode;
 
 function selectDiff(d){
   botDifficulty=d;
@@ -695,12 +783,15 @@ function selectDiff(d){
     b.classList.toggle('sel',i===d);
   });
 }
+window.selectDiff=selectDiff;
 
 function goMenu(){
   document.getElementById('endScreen').style.display='none';
   document.getElementById('menuOv').style.display='flex';
+  if(gameMode==='online') leaveOnlineRoom();
   updateScores();
 }
+window.goMenu=goMenu;
 
 function startFromMenu(){
   document.getElementById('menuOv').style.display='none';
@@ -710,7 +801,7 @@ function startFromMenu(){
   const col2=getPlayerColor(2);
   p1=makePlayer(1,1,col1,{up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'},'שחקן 1');
   p2=makePlayer(17,11,col2,{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD'},
-    gameMode==='bot'?'בוט':'שחקן 2');
+    gameMode==='bot'?'בוט':gameMode==='online'?'🌐 יריב':'שחקן 2');
   p2.isBot=(gameMode==='bot');
 
   resetPow(p1);resetPow(p2);
@@ -719,8 +810,13 @@ function startFromMenu(){
   resetPos();lotteryRoles();
   gameRunning=true;updateScores();
   if(animId) cancelAnimationFrame(animId);
+
+  // Analytics: track game start
+  if(window.gaEvent) window.gaEvent('game_start',{mode:gameMode, difficulty:gameMode==='bot'?botDifficulty:0});
+
   loop();
 }
+window.startFromMenu=startFromMenu;
 
 function newRound(){
   dots=makeDots();fruits=[];fruitTimer=0;
@@ -732,9 +828,9 @@ function newRound(){
 //  DIAMONDS REWARD
 // ============================================================
 const DIAMOND_REWARDS={
-  1:{win:3,lose:0},   // easy
-  2:{win:6,lose:1},   // medium
-  3:{win:12,lose:2},  // hard
+  1:{win:3,lose:0},
+  2:{win:6,lose:1},
+  3:{win:12,lose:2},
 };
 
 function endGame(){
@@ -755,23 +851,33 @@ function endGame(){
     else if(playerLost){ dia1Earned=reward.lose; }
   } else {
     dia1Earned=playerWon?3:1;
-    dia2Earned=playerLost?1:3; // p2 wins if p1 lost, else p2 gets 1 (tie=both 1)
-    if(!playerWon&&!playerLost){ dia1Earned=1; dia2Earned=1; } // tie
+    dia2Earned=playerLost?1:3;
+    if(!playerWon&&!playerLost){ dia1Earned=1; dia2Earned=1; }
   }
 
   saveData.p1.diamonds+=dia1Earned;
   if(gameMode==='2p') saveData.p2.diamonds+=dia2Earned;
   saveSave();
 
+  const winner = p1.score>p2.score?'p1':p2.score>p1.score?'p2':'tie';
+  // Analytics: track game end
+  if(window.gaEvent) window.gaEvent('game_end',{
+    mode: gameMode,
+    winner,
+    p1_score: p1.score,
+    p2_score: p2.score,
+    duration_frames: gameFrames
+  });
+
   if(p1.score>p2.score){
     wt.textContent='🏆 שחקן 1 מנצח!';wt.style.color='#ffe600';
   } else if(p2.score>p1.score){
-    const n2=p2.isBot?'🤖 בוט':'שחקן 2';
+    const n2=p2.isBot?'🤖 בוט':gameMode==='online'?'🌐 יריב':'שחקן 2';
     wt.textContent=`🏆 ${n2} מנצח!`;wt.style.color='#ff4466';
   } else {
     wt.textContent='🤝 תיקו!';wt.style.color='#88ffcc';
   }
-  fs.innerHTML=`שחקן 1: ${p1.score} נקודות<br>${p2.isBot?'🤖 בוט':'שחקן 2'}: ${p2.score} נקודות`;
+  fs.innerHTML=`שחקן 1: ${p1.score} נקודות<br>${p2.isBot?'🤖 בוט':gameMode==='online'?'🌐 יריב':'שחקן 2'}: ${p2.score} נקודות`;
 
   let diaMsg='';
   if(gameMode==='bot'){
@@ -786,6 +892,8 @@ function endGame(){
   document.getElementById('menuDia2').textContent=saveData.p2.diamonds;
   document.getElementById('dia1').textContent=`💎 ${saveData.p1.diamonds}`;
   document.getElementById('dia2').textContent=`💎 ${saveData.p2.diamonds}`;
+
+  if(gameMode==='online') pushOnlineGameEnd();
 }
 
 // ============================================================
@@ -796,11 +904,15 @@ function openShop(pn){
   renderShop();
   document.getElementById('menuOv').style.display='none';
   document.getElementById('shopOv').style.display='flex';
+  if(window.gaEvent) window.gaEvent('shop_open',{player:pn});
 }
+window.openShop=openShop;
+
 function closeShop(){
   document.getElementById('shopOv').style.display='none';
   document.getElementById('menuOv').style.display='flex';
 }
+window.closeShop=closeShop;
 
 function renderShop(){
   const pn=currentShopPlayer;
@@ -811,7 +923,6 @@ function renderShop(){
   document.getElementById('shopDiaCount').textContent=sd.diamonds;
   const grid=document.getElementById('shopGrid');
   grid.innerHTML='';
-  // For p2, hide yellow as default and show red as default
   const defaultId=pn===1?'col_yellow':'col_red';
   for(const item of SHOP_ITEMS){
     const isDefault=item.id===defaultId;
@@ -846,6 +957,7 @@ function shopClick(id){
     sd.diamonds-=item.price;
     sd.owned.push(item.id);
     saveSave();
+    if(window.gaEvent) window.gaEvent('shop_purchase',{item_id:id,player:pn,price:item.price});
   }
   if(item.type==='color') sd.equippedColor=item.id;
   else if(item.type==='acc') sd.equippedAcc=(sd.equippedAcc===item.id)?null:item.id;
@@ -876,7 +988,6 @@ function loop(){
     return;
   }
 
-  // timers
   if(p1.doublePoints>0) p1.doublePoints--;
   if(p2.doublePoints>0) p2.doublePoints--;
   if(p1.eatAll>0) p1.eatAll--;
@@ -885,16 +996,24 @@ function loop(){
   if(p2.speedTimer>0){p2.speedTimer--;if(p2.speedTimer===0)p2.speedMult=1;}
 
   // movement
-  moveHuman(p1);
-  if(p2.isBot) moveBot(p2,p1);
-  else moveHuman(p2);
+  if(gameMode==='online'){
+    // local player moves with keyboard; remote player uses received keys
+    const localP  = onlineRole==='p1'?p1:p2;
+    const remoteP = onlineRole==='p1'?p2:p1;
+    moveHuman(localP);
+    moveRemoteOnline(remoteP);
+    // push local position to Firebase every 3 frames
+    if(gameFrames%3===0) pushOnlinePosition(localP);
+  } else {
+    moveHuman(p1);
+    if(p2.isBot) moveBot(p2,p1);
+    else moveHuman(p2);
+  }
 
-  // spawn fruits
   fruitTimer++;
   if(fruitTimer>=180&&fruits.filter(f=>!f.eaten).length<4){spawnFruit();fruitTimer=0;}
   for(const f of fruits) if(!f.eaten){f.life--;if(f.life<=0)f.eaten=true;}
 
-  // eat dots
   for(const p of [p1,p2]){
     if(p.role==='pacman'||p.eatAll>0){
       for(const d of dots){
@@ -906,7 +1025,6 @@ function loop(){
     }
   }
 
-  // eat fruits
   for(const f of fruits){
     if(f.eaten) continue;
     for(const p of [p1,p2]){
@@ -916,7 +1034,6 @@ function loop(){
     }
   }
 
-  // catch
   if(Math.hypot(p1.x-p2.x,p1.y-p2.y)<SIZE*1.6){
     const ghost=p1.role==='ghost'?p1:p2;
     if(ghost.frozen===0){
@@ -927,7 +1044,6 @@ function loop(){
     }
   }
 
-  // all dots
   if(dots.filter(d=>!d.eaten).length===0){
     const pac=p1.role==='pacman'?p1:p2;
     const pts=5*(pac.doublePoints>0?2:1);
@@ -941,12 +1057,236 @@ function loop(){
   updateScores();drawTimer();
   ctx.fillStyle='#334466';ctx.font='7px "Press Start 2P"';ctx.textAlign='center';
   ctx.fillText(`נקודות: ${dots.filter(d=>!d.eaten).length}`,W/2,H-5);
+
+  // Online: sync scores every 10 frames
+  if(gameMode==='online' && gameFrames%10===0) pushOnlineScore();
 }
 
-// init
+// ============================================================
+//  ONLINE MULTIPLAYER
+// ============================================================
+let onlineRoomId = null;
+let onlineRole   = null;  // 'p1' or 'p2'
+let onlineListeners = [];
+let remoteKeys = {};
+
+function setOnlineDot(state){ // 'connected','waiting','error',''
+  const dot=document.getElementById('onlineStatusDot');
+  dot.className='';
+  if(state) dot.classList.add(state);
+}
+
+function setOnlineStatus(msg){
+  document.getElementById('onlineStatus').textContent=msg;
+}
+
+function genRoomCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code='';
+  for(let i=0;i<6;i++) code+=chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
+
+function openOnlineMenu(){
+  document.getElementById('menuOv').style.display='none';
+  document.getElementById('onlineOv').style.display='flex';
+  document.getElementById('waitingSection').style.display='none';
+  setOnlineStatus('בחר אפשרות');
+  setOnlineDot('');
+  if(window.gaEvent) window.gaEvent('online_menu_open');
+}
+window.openOnlineMenu=openOnlineMenu;
+
+async function createOnlineRoom(){
+  if(!window._db){setOnlineStatus('❌ Firebase לא מוכן');setOnlineDot('error');return;}
+  const code=genRoomCode();
+  onlineRoomId=code;
+  onlineRole='p1';
+
+  const roomRef=window._ref(window._db, `rooms/${code}`);
+
+  try{
+    await window._set(roomRef,{
+      status:'waiting',
+      p1:{x:0,y:0,score:0,role:'',keys:{}},
+      p2:null,
+      created: Date.now()
+    });
+
+    // auto-delete on disconnect
+    window._onDisconnect(roomRef).remove();
+
+    document.getElementById('roomCodeDisplay').textContent=code;
+    document.getElementById('waitingSection').style.display='flex';
+    setOnlineStatus('⏳ ממתין לשחקן שני...');
+    setOnlineDot('waiting');
+
+    // listen for p2 joining
+    const unsub=window._onValue(roomRef, snap=>{
+      const data=snap.val();
+      if(!data) return;
+      if(data.status==='ready' && data.p2){
+        setOnlineStatus('✅ שחקן 2 הצטרף!');
+        setOnlineDot('connected');
+        setTimeout(()=>startOnlineGame(),800);
+      }
+    });
+    onlineListeners.push(unsub);
+
+    if(window.gaEvent) window.gaEvent('online_room_created',{room:code});
+  }catch(e){
+    setOnlineStatus('❌ שגיאה: '+e.message);
+    setOnlineDot('error');
+  }
+}
+window.createOnlineRoom=createOnlineRoom;
+
+async function joinOnlineRoom(){
+  const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if(code.length!==6){setOnlineStatus('❌ קוד לא תקין (6 תווים)');return;}
+  if(!window._db){setOnlineStatus('❌ Firebase לא מוכן');setOnlineDot('error');return;}
+
+  const roomRef=window._ref(window._db,`rooms/${code}`);
+  try{
+    const snap=await window._get(roomRef);
+    const data=snap.val();
+    if(!data){setOnlineStatus('❌ חדר לא נמצא');setOnlineDot('error');return;}
+    if(data.status!=='waiting'){setOnlineStatus('❌ החדר מלא');setOnlineDot('error');return;}
+
+    onlineRoomId=code;
+    onlineRole='p2';
+
+    await window._set(window._ref(window._db,`rooms/${code}/p2`),{x:0,y:0,score:0,role:'',keys:{}});
+    await window._set(window._ref(window._db,`rooms/${code}/status`),'ready');
+
+    // auto-cleanup on disconnect
+    window._onDisconnect(window._ref(window._db,`rooms/${code}/p2`)).remove();
+
+    setOnlineStatus('✅ מחובר! מתחיל...');
+    setOnlineDot('connected');
+    setTimeout(()=>startOnlineGame(),800);
+
+    if(window.gaEvent) window.gaEvent('online_room_joined',{room:code});
+  }catch(e){
+    setOnlineStatus('❌ שגיאה: '+e.message);
+    setOnlineDot('error');
+  }
+}
+window.joinOnlineRoom=joinOnlineRoom;
+
+function copyRoomCode(){
+  const code=document.getElementById('roomCodeDisplay').textContent;
+  navigator.clipboard.writeText(code).then(()=>{
+    document.getElementById('copyRoomBtn').textContent='✅ הועתק!';
+    setTimeout(()=>{document.getElementById('copyRoomBtn').textContent='📋 העתק קוד';},2000);
+  });
+}
+window.copyRoomCode=copyRoomCode;
+
+function cancelOnline(){
+  leaveOnlineRoom();
+  document.getElementById('onlineOv').style.display='none';
+  document.getElementById('menuOv').style.display='flex';
+}
+window.cancelOnline=cancelOnline;
+
+function leaveOnlineRoom(){
+  onlineListeners.forEach(u=>{ try{u();}catch(e){} });
+  onlineListeners=[];
+  if(onlineRoomId && window._db){
+    try{ window._remove(window._ref(window._db,`rooms/${onlineRoomId}`)); }catch(e){}
+  }
+  onlineRoomId=null;
+  onlineRole=null;
+  setOnlineDot('');
+  remoteKeys={};
+}
+
+function startOnlineGame(){
+  gameMode='online';
+  document.getElementById('onlineOv').style.display='none';
+  setOnlineDot('connected');
+
+  // listen for remote player's position
+  if(onlineRoomId && window._db){
+    const remoteKey = onlineRole==='p1'?'p2':'p1';
+    const posRef=window._ref(window._db,`rooms/${onlineRoomId}/${remoteKey}`);
+    const unsub=window._onValue(posRef, snap=>{
+      const d=snap.val();
+      if(!d) return;
+      const remoteP=onlineRole==='p1'?p2:p1;
+      if(remoteP){
+        if(d.x) remoteP.x=d.x;
+        if(d.y) remoteP.y=d.y;
+        if(d.dx!==undefined) remoteP.dx=d.dx;
+        if(d.dy!==undefined) remoteP.dy=d.dy;
+        if(d.score!==undefined) remoteP.score=d.score;
+        if(d.keys) remoteKeys=d.keys;
+      }
+    });
+    onlineListeners.push(unsub);
+  }
+
+  startFromMenu();
+}
+
+function pushOnlinePosition(p){
+  if(!onlineRoomId || !window._db) return;
+  const myKey=onlineRole;
+  const posRef=window._ref(window._db,`rooms/${onlineRoomId}/${myKey}`);
+  try{
+    window._set(posRef,{x:Math.round(p.x),y:Math.round(p.y),dx:p.dx,dy:p.dy,score:p.score,role:p.role,keys:{}});
+  }catch(e){}
+}
+
+function pushOnlineScore(){
+  if(!onlineRoomId || !window._db) return;
+  const myKey=onlineRole;
+  try{
+    window._set(window._ref(window._db,`rooms/${onlineRoomId}/${myKey}/score`), onlineRole==='p1'?p1.score:p2.score);
+  }catch(e){}
+}
+
+function pushOnlineInput(code, pressed){
+  if(!onlineRoomId || !window._db) return;
+  const myKey=onlineRole;
+  try{
+    window._set(window._ref(window._db,`rooms/${onlineRoomId}/${myKey}/keys/${code}`), pressed);
+  }catch(e){}
+}
+
+function pushOnlineGameEnd(){
+  if(!onlineRoomId || !window._db) return;
+  try{
+    window._set(window._ref(window._db,`rooms/${onlineRoomId}/status`),'finished');
+  }catch(e){}
+}
+
+function moveRemoteOnline(p){
+  // use remoteKeys received from Firebase
+  if(p.frozen>0){p.frozen--;return;}
+  const spd=BASE_SPEED*p.speedMult;
+  let dx=0,dy=0;
+  if(remoteKeys['ArrowUp']||remoteKeys['KeyW'])   dy=-spd;
+  if(remoteKeys['ArrowDown']||remoteKeys['KeyS'])  dy= spd;
+  if(remoteKeys['ArrowLeft']||remoteKeys['KeyA'])  dx=-spd;
+  if(remoteKeys['ArrowRight']||remoteKeys['KeyD']) dx= spd;
+  if(dx) tryMove(p,dx,0);
+  if(dy) tryMove(p,0,dy);
+  p.dx=dx;p.dy=dy;
+}
+
+// ============================================================
+//  INIT
+// ============================================================
 drawMaze();
 p1={score:0,role:'pacman'};p2={score:0,role:'ghost',isBot:false};
 updateScores();
+
+// Analytics: page view
+setTimeout(()=>{
+  if(window.gaEvent) window.gaEvent('page_view',{page:'pacman_game'});
+},1000);
 </script>
 </body>
 </html>
