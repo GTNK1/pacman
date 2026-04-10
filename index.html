@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>פקמן - מי יהיה הפקמן?</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Press Start 2P',monospace;overflow:hidden;}
+h1{color:#ffe600;font-size:12px;letter-spacing:2px;margin-bottom:5px;text-shadow:0 0 20px #ffe60088;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{text-shadow:0 0 10px #ffe60088;}50%{text-shadow:0 0 30px #ffe600cc;}}
+#topBar{display:flex;gap:16px;align-items:center;margin-bottom:5px;font-size:8px;}
+#p1score{color:#ffe600;}#p2score{color:#ff4466;}
+#diamonds{color:#88eeff;font-size:9px;}
+#timer{color:#fff;font-size:12px;text-shadow:0 0 12px #fff;min-width:70px;text-align:center;}
+#timer.warn{color:#ff4400;animation:blink .5s step-start infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+canvas{border:3px solid #1a3a6a;box-shadow:0 0 40px #0044ff55;display:block;}
+#message{margin-top:6px;color:#fff;font-size:8px;min-height:16px;text-align:center;text-shadow:0 0 10px #fff8;}
+#controls{margin-top:8px;font-size:7px;color:#445577;display:flex;gap:16px;text-align:center;line-height:2;}
+.ctrl-p1{color:#ffe600aa;}.ctrl-p2{color:#ff4466aa;}
+#fruitLegend{margin-top:6px;font-size:7px;color:#667799;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.fl{display:flex;align-items:center;gap:3px;}.fl span{font-size:13px;}
+
+/* === OVERLAYS BASE === */
+.ov{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.9);z-index:10;gap:14px;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.ov h2{font-family:'Press Start 2P',monospace;color:#ffe600;text-shadow:0 0 30px #ffe600;text-align:center;}
+.ov p{font-family:'Press Start 2P',monospace;font-size:9px;color:#aaaacc;text-align:center;line-height:2.2;}
+
+/* main menu */
+#menuOv{z-index:15;}
+#menuOv h2{font-size:16px;}
+.menu-btn{font-family:'Press Start 2P',monospace;font-size:10px;background:#1a2a4a;color:#88ccff;border:2px solid #2244aa;padding:10px 20px;cursor:pointer;margin:3px;min-width:220px;transition:all .15s;}
+.menu-btn:hover{background:#223366;border-color:#4488ff;color:#fff;transform:translate(-2px,-2px);box-shadow:4px 4px 0 #001133;}
+.menu-btn.active{background:#ffe600;color:#0a0a1a;border-color:#aa9900;}
+#shopBtn{background:#1a3a1a;color:#88ffaa;border-color:#22aa44;}
+#shopBtn:hover{background:#223322;border-color:#44ff88;}
+.diff-row{display:flex;gap:6px;justify-content:center;}
+.diff-btn{font-family:'Press Start 2P',monospace;font-size:8px;padding:6px 12px;cursor:pointer;border:2px solid;transition:all .15s;}
+.diff-btn:hover{transform:translate(-1px,-1px);}
+.diff-btn.sel{box-shadow:0 0 12px currentColor;}
+#db1{background:#0a2a0a;color:#44ff88;border-color:#44ff88;}
+#db2{background:#2a1a00;color:#ffaa00;border-color:#ffaa00;}
+#db3{background:#2a0a0a;color:#ff4444;border-color:#ff4444;}
+.diamonds-display{color:#88eeff;font-size:11px;}
+
+/* role announce */
+#roleAnnounce{z-index:9;}
+#roleAnnounce .role-line{font-family:'Press Start 2P',monospace;font-size:12px;text-align:center;line-height:2.2;}
+.pacman-role{color:#ffe600;text-shadow:0 0 20px #ffe600;}
+.ghost-role{color:#ff4466;text-shadow:0 0 20px #ff4466;}
+
+/* end screen */
+#endScreen{z-index:11;}
+#endScreen h2{font-size:18px;}
+.scores-final{font-family:'Press Start 2P',monospace;font-size:10px;color:#ccddff;text-align:center;line-height:2.5;}
+.earned-diamonds{font-family:'Press Start 2P',monospace;font-size:12px;color:#88eeff;text-align:center;text-shadow:0 0 16px #88eeff;}
+
+/* shop */
+#shopOv{z-index:20;}
+#shopOv h2{font-size:14px;margin-bottom:4px;}
+.shop-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:560px;}
+.shop-item{background:#0d1a2a;border:2px solid #1a3a6a;padding:8px 6px;text-align:center;cursor:pointer;transition:all .15s;position:relative;}
+.shop-item:hover{border-color:#4488ff;background:#112233;}
+.shop-item.owned{border-color:#44ff88;background:#0a1a0a;}
+.shop-item.equipped{border-color:#ffe600;background:#1a1500;box-shadow:0 0 12px #ffe60055;}
+.shop-item .si-emoji{font-size:24px;display:block;margin-bottom:4px;}
+.shop-item .si-name{font-size:6px;color:#aabbcc;display:block;margin-bottom:4px;}
+.shop-item .si-price{font-size:7px;color:#88eeff;}
+.shop-item .si-price.owned{color:#44ff88;}
+.shop-item .badge{position:absolute;top:2px;right:2px;font-size:5px;background:#ffe600;color:#000;padding:1px 3px;}
+.shop-dia{font-family:'Press Start 2P',monospace;font-size:11px;color:#88eeff;margin-bottom:8px;}
+.shop-close{font-family:'Press Start 2P',monospace;font-size:9px;background:#2a1a00;color:#ffaa44;border:2px solid #aa6600;padding:8px 16px;cursor:pointer;margin-top:8px;}
+.shop-close:hover{background:#3a2a00;}
+
+/* powerup msg */
+#powerupMsg{position:absolute;left:50%;transform:translateX(-50%);font-family:'Press Start 2P',monospace;font-size:8px;white-space:nowrap;pointer-events:none;transition:opacity .3s;}
+</style>
+</head>
+<body>
+
+<h1>🕹 פקמן — מי יהיה הפקמן?</h1>
+
+<div id="topBar">
+  <span id="p1score">שחקן 1: 0</span>
+  <span id="dia1" style="color:#ffe600;font-size:8px;">💎 0</span>
+  <span id="timer">5:00</span>
+  <span id="dia2" style="color:#ff4466;font-size:8px;">💎 0</span>
+  <span id="p2score">שחקן 2: 0</span>
+</div>
+
+<div style="position:relative;display:inline-block;">
+  <canvas id="c" width="760" height="494"></canvas>
+  <div id="powerupMsg" style="top:10px;opacity:0;color:#fff;"></div>
+
+  <!-- MAIN MENU -->
+  <div id="menuOv" class="ov" style="display:flex;">
+    <h2>👻 פקמן 👾</h2>
+    <div style="display:flex;gap:24px;">
+      <div class="diamonds-display" style="color:#ffe600;">שחקן 1 💎 <span id="menuDia1">0</span></div>
+      <div class="diamonds-display" style="color:#ff4466;">שחקן 2 💎 <span id="menuDia2">0</span></div>
+    </div>
+    <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#aaaacc;text-align:center;">בחר מצב משחק:</div>
+    <button class="menu-btn" onclick="selectMode('2p')">👥 שני שחקנים</button>
+    <button class="menu-btn" id="btnBot" onclick="selectMode('bot')">🤖 נגד בוט</button>
+    <div class="diff-row" id="diffRow" style="display:none;">
+      <button class="diff-btn sel" id="db1" onclick="selectDiff(1)">קל 🟢</button>
+      <button class="diff-btn" id="db2" onclick="selectDiff(2)">בינוני 🟡</button>
+      <button class="diff-btn" id="db3" onclick="selectDiff(3)">קשה 🔴</button>
+    </div>
+    <button class="menu-btn active" id="startMenuBtn" onclick="startFromMenu()">התחל! ▶</button>
+    <div style="display:flex;gap:6px;">
+      <button class="menu-btn" id="shopBtn" onclick="openShop(1)" style="min-width:150px;font-size:9px;background:#1a3a1a;color:#ffe600;border-color:#aa9900;">🛍 חנות שחקן 1</button>
+      <button class="menu-btn" id="shopBtn2" onclick="openShop(2)" style="min-width:150px;font-size:9px;background:#2a1a1a;color:#ff4466;border-color:#aa2233;">🛍 חנות שחקן 2</button>
+    </div>
+    <p style="font-size:7px;">שחקן 1: חצים | שחקן 2/בוט: W A S D<br>נצח כדי לקבל 💎 יהלומים!</p>
+  </div>
+
+  <!-- ROLE ANNOUNCE -->
+  <div id="roleAnnounce" class="ov">
+    <div class="role-line pacman-role" id="rA1"></div>
+    <div class="role-line ghost-role"  id="rA2"></div>
+    <div style="color:#aaaacc;font-size:8px;font-family:'Press Start 2P',monospace;text-align:center;">
+      אכול פירות לכוחות מיוחדים!<br>משחק מתחיל...
+    </div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="endScreen" class="ov">
+    <h2 id="winnerText">מנצח!</h2>
+    <div class="scores-final" id="finalScores"></div>
+    <div class="earned-diamonds" id="earnedDia"></div>
+    <button class="menu-btn active" onclick="goMenu()">תפריט ראשי</button>
+    <button class="menu-btn" onclick="startFromMenu()">שחק שוב!</button>
+  </div>
+
+  <!-- SHOP -->
+  <div id="shopOv" class="ov">
+    <h2 id="shopTitle">🛍 חנות שחקן 1</h2>
+    <div class="shop-dia">💎 יהלומים: <span id="shopDiaCount">0</span></div>
+    <div class="shop-grid" id="shopGrid"></div>
+    <button class="shop-close" onclick="closeShop()">✖ סגור חנות</button>
+  </div>
+</div>
+
+<div id="message">בחר מצב משחק למעלה</div>
+<div id="controls">
+  <div class="ctrl-p1">שחקן 1 ← → ↑ ↓</div>
+  <div class="ctrl-p2" id="ctrl2lbl">שחקן 2 W A S D</div>
+</div>
+<div id="fruitLegend">
+  <div class="fl"><span>🍒</span><span style="color:#ff6688">+2</span></div>
+  <div class="fl"><span>🍋</span><span style="color:#ffff44">מהיר</span></div>
+  <div class="fl"><span>🍇</span><span style="color:#cc66ff">+5</span></div>
+  <div class="fl"><span>🍓</span><span style="color:#ff3355">קפא</span></div>
+  <div class="fl"><span>🍊</span><span style="color:#ff8833">x2</span></div>
+  <div class="fl"><span>🍉</span><span style="color:#44ff88">אכל</span></div>
+  <div class="fl"><span>🥭</span><span style="color:#ffaa00">גנוב</span></div>
+</div>
+
+<script>
+// ============================================================
+//  SHOP DATA
+// ============================================================
+const SHOP_ITEMS = [
+  // Colors (for pacman body)
+  {id:'col_yellow', type:'color', name:'צהוב', emoji:'🟡', color:'#ffe600', price:0, default:true},
+  {id:'col_cyan',   type:'color', name:'ציאן',  emoji:'🔵', color:'#00ffee', price:15},
+  {id:'col_pink',   type:'color', name:'ורוד',  emoji:'🩷', color:'#ff44cc', price:15},
+  {id:'col_green',  type:'color', name:'ירוק',  emoji:'🟢', color:'#44ff44', price:20},
+  {id:'col_orange', type:'color', name:'כתום',  emoji:'🟠', color:'#ff8800', price:20},
+  {id:'col_purple', type:'color', name:'סגול',  emoji:'🟣', color:'#cc44ff', price:25},
+  {id:'col_white',  type:'color', name:'לבן',   emoji:'⚪', color:'#ffffff', price:30},
+  {id:'col_red',    type:'color', name:'אדום',  emoji:'🔴', color:'#ff2222', price:35},
+  // Accessories (drawn on top of pacman)
+  {id:'acc_hat',    type:'acc', name:'כובע',    emoji:'🎩', price:20},
+  {id:'acc_glasses',type:'acc', name:'משקפיים', emoji:'🕶', price:25},
+  {id:'acc_crown',  type:'acc', name:'כתר',     emoji:'👑', price:40},
+  {id:'acc_bow',    type:'acc', name:'פפיון',   emoji:'🎀', price:30},
+];
+
+// ============================================================
+//  SAVE DATA — per player
+// ============================================================
+const DEFAULT_SAVE = (defaultColor) => ({
+  diamonds: 0,
+  owned: [defaultColor],
+  equippedColor: defaultColor,
+  equippedAcc: null,
+});
+
+let saveData = {
+  p1: DEFAULT_SAVE('col_yellow'),
+  p2: DEFAULT_SAVE('col_red'),
+};
+
+function saveSave(){
+  try{ localStorage.setItem('pacman_save2', JSON.stringify(saveData)); }catch(e){}
+}
+function loadSave(){
+  try{
+    const d=localStorage.getItem('pacman_save2');
+    if(d){
+      const parsed=JSON.parse(d);
+      if(parsed.p1) saveData.p1=parsed.p1;
+      if(parsed.p2) saveData.p2=parsed.p2;
+    }
+  }catch(e){}
+}
+loadSave();
+
+function getPlayerColor(pn){
+  const sd=pn===1?saveData.p1:saveData.p2;
+  const item=SHOP_ITEMS.find(i=>i.id===sd.equippedColor);
+  return item?item.color:(pn===1?'#ffe600':'#ff4466');
+}
+
+let currentShopPlayer=1; // which player's shop is open
+
+// ============================================================
+//  CANVAS / MAZE
+// ============================================================
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const W=canvas.width, H=canvas.height;
+const COLS=19, ROWS=13;
+const BW=Math.floor(W/COLS), BH=Math.floor(H/ROWS);
+
+const MAZE=[
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,1,0,1,1,1,0,1,1,0,1,1,0,1],
+  [1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1],
+  [1,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,0,0,1],
+  [1,1,1,0,1,0,1,0,0,0,0,0,1,0,1,0,1,1,1],
+  [1,0,0,0,0,0,1,0,1,0,1,0,1,0,0,0,0,0,1],
+  [1,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,1],
+  [1,0,1,0,0,0,1,0,1,0,1,0,1,0,0,0,1,0,1],
+  [1,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,1],
+  [1,0,1,1,0,1,1,0,1,1,1,0,1,1,0,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+function isWall(c,r){
+  if(r<0||r>=ROWS||c<0||c>=COLS) return true;
+  return MAZE[r][c]===1;
+}
+
+// Build open cells list for BFS
+const OPEN_CELLS=[];
+for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(!isWall(c,r)) OPEN_CELLS.push({c,r});
+
+function cellOf(x,y){ return {c:Math.round((x-BW/2)/BW), r:Math.round((y-BH/2)/BH)}; }
+
+// BFS pathfinding
+function bfs(sc,sr,tc,tr){
+  if(sc===tc&&sr===tr) return [];
+  const visited=new Set();
+  const key=(c,r)=>c+','+r;
+  const q=[{c:sc,r:sr,path:[]}];
+  visited.add(key(sc,sr));
+  const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
+  while(q.length){
+    const {c,r,path}=q.shift();
+    for(const[dc,dr]of dirs){
+      const nc=c+dc, nr=r+dr;
+      const k=key(nc,nr);
+      if(!isWall(nc,nr)&&!visited.has(k)){
+        visited.add(k);
+        const np=[...path,{c:nc,r:nr}];
+        if(nc===tc&&nr===tr) return np;
+        q.push({c:nc,r:nr,path:np});
+      }
+    }
+  }
+  return [];
+}
+
+// ============================================================
+//  FRUITS
+// ============================================================
+const FRUIT_TYPES=[
+  {emoji:'🍒',color:'#ff6688',name:'דובדבן',effect:'points',value:2,dur:0},
+  {emoji:'🍋',color:'#ffff44',name:'לימון', effect:'speed', value:1.8,dur:180},
+  {emoji:'🍇',color:'#cc66ff',name:'ענבים', effect:'points',value:5,dur:0},
+  {emoji:'🍓',color:'#ff3355',name:'תות',   effect:'freeze',value:0,dur:180},
+  {emoji:'🍊',color:'#ff8833',name:'תפוז',  effect:'double',value:2,dur:200},
+  {emoji:'🍉',color:'#44ff88',name:'אבטיח', effect:'eatall',value:0,dur:300},
+  {emoji:'🥭',color:'#ffaa00',name:'מנגו',  effect:'steal', value:0,dur:0},
+];
+let fruits=[],dots=[];
+let fruitTimer=0;
+
+function spawnFruit(){
+  if(!OPEN_CELLS.length) return;
+  const cell=OPEN_CELLS[Math.floor(Math.random()*OPEN_CELLS.length)];
+  const type=FRUIT_TYPES[Math.floor(Math.random()*FRUIT_TYPES.length)];
+  fruits.push({x:cell.c*BW+BW/2,y:cell.r*BH+BH/2,type,eaten:false,life:600,pulse:0});
+}
+
+function makeDots(){
+  const d=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+    if(!isWall(c,r)) d.push({x:c*BW+BW/2,y:r*BH+BH/2,eaten:false});
+  return d;
+}
+
+// ============================================================
+//  PLAYER
+// ============================================================
+const GAME_FRAMES=2*60*60;
+const BASE_SPEED=3, SIZE=15;
+let gameFrames=0;
+
+function makePlayer(c,r,color,keys,name){
+  return {x:c*BW+BW/2,y:r*BH+BH/2,color,baseColor:color,keys,name,role:'',score:0,
+    dx:0,dy:0,speedMult:1,speedTimer:0,frozen:0,doublePoints:0,eatAll:0,
+    glowColor:null,glowTimer:0,lastPowerup:null,isBot:false};
+}
+
+let p1,p2;
+let keysDown={},gameRunning=false,animId=null,caughtTimer=0;
+let gameMode='2p', botDifficulty=1;
+
+window.addEventListener('keydown',e=>{keysDown[e.code]=true;e.preventDefault();},{passive:false});
+window.addEventListener('keyup',e=>{keysDown[e.code]=false;});
+
+// ============================================================
+//  BOT AI
+// ============================================================
+let botPath=[], botPathTimer=0;
+
+const BOT_SETTINGS={
+  1:{speed:1.6, replanEvery:90,  randomChance:0.5,  fruitSeek:false}, // קל  — איטי, אקראי, לא מחפש פירות
+  2:{speed:2.6, replanEvery:30,  randomChance:0.18, fruitSeek:true},  // בינוני
+  3:{speed:3.3, replanEvery:8,   randomChance:0.04, fruitSeek:true},  // קשה — כמעט מושלם
+};
+
+function moveBot(bot, opponent){
+  if(bot.frozen>0){bot.frozen--;return;}
+  const cfg=BOT_SETTINGS[botDifficulty];
+
+  botPathTimer--;
+  if(botPathTimer<=0 || botPath.length===0){
+    botPathTimer=cfg.replanEvery;
+    const bc=cellOf(bot.x,bot.y), oc=cellOf(opponent.x,opponent.y);
+
+    let targetC=oc.c, targetR=oc.r;
+
+    // fruit seeking on harder modes
+    if(cfg.fruitSeek && fruits.filter(f=>!f.eaten).length>0 && Math.random()<0.5){
+      let bestFruit=null, bestScore=-999;
+      for(const f of fruits){
+        if(f.eaten) continue;
+        const fc=cellOf(f.x,f.y);
+        const dist=Math.abs(fc.c-bc.c)+Math.abs(fc.r-bc.r);
+        // prefer high-value fruits
+        let val=1;
+        if(f.type.effect==='points') val=f.type.value*2;
+        if(f.type.effect==='speed'||f.type.effect==='double') val=8;
+        if(f.type.effect==='freeze'||f.type.effect==='steal') val=10;
+        const score=val - dist*0.5;
+        if(score>bestScore){bestScore=score;bestFruit=f;}
+      }
+      if(bestFruit){
+        const fc=cellOf(bestFruit.x,bestFruit.y);
+        targetC=fc.c; targetR=fc.r;
+      }
+    }
+
+    // if ghost, chase pacman; if pacman, run from ghost OR eat dots
+    if(bot.role==='ghost'){
+      // chase opponent
+      botPath=bfs(bc.c,bc.r,targetC,targetR);
+    } else {
+      // pacman: if close to ghost run away, else find nearest dot
+      const distToGhost=Math.hypot(bot.x-opponent.x,bot.y-opponent.y);
+      if(distToGhost<BW*4){
+        // run away: pick cell furthest from ghost
+        let bestCell=null,bestDist=0;
+        for(const cell of OPEN_CELLS){
+          const d=Math.abs(cell.c-oc.c)+Math.abs(cell.r-oc.r);
+          if(d>bestDist){bestDist=d;bestCell=cell;}
+        }
+        if(bestCell) botPath=bfs(bc.c,bc.r,bestCell.c,bestCell.r);
+      } else {
+        // find nearest uneaten dot
+        let nearestDot=null,nearestD=999;
+        for(const d of dots){
+          if(d.eaten) continue;
+          const dc=cellOf(d.x,d.y);
+          const dist=Math.abs(dc.c-bc.c)+Math.abs(dc.r-bc.r);
+          if(dist<nearestD){nearestD=dist;nearestDot=d;}
+        }
+        if(nearestDot){
+          const dc=cellOf(nearestDot.x,nearestDot.y);
+          botPath=bfs(bc.c,bc.r,dc.c,dc.r);
+        }
+      }
+    }
+    // random deviation
+    if(Math.random()<cfg.randomChance) botPath=botPath.slice(0,Math.max(1,Math.floor(botPath.length*0.4)));
+  }
+
+  const spd=cfg.speed*(bot.speedMult>1?bot.speedMult:1);
+
+  if(botPath.length>0){
+    const next=botPath[0];
+    const tx=next.c*BW+BW/2, ty=next.r*BH+BH/2;
+    const dx=tx-bot.x, dy=ty-bot.y;
+    const dist=Math.hypot(dx,dy);
+    if(dist<spd+1){
+      bot.x=tx; bot.y=ty;
+      botPath.shift();
+      bot.dx=dx>0?1:dx<0?-1:0;
+      bot.dy=dy>0?1:dy<0?-1:0;
+    } else {
+      bot.x+=dx/dist*spd;
+      bot.y+=dy/dist*spd;
+      bot.dx=dx; bot.dy=dy;
+    }
+  }
+}
+
+// ============================================================
+//  PLAYER MOVEMENT
+// ============================================================
+function tryMove(p,dx,dy){
+  const nx=p.x+dx,ny=p.y+dy,m=6;
+  const corners=[[nx-m,ny-m],[nx+m,ny-m],[nx-m,ny+m],[nx+m,ny+m]];
+  for(const[cx,cy]of corners) if(isWall(Math.floor(cx/BW),Math.floor(cy/BH))) return false;
+  p.x=nx;p.y=ny;return true;
+}
+
+function moveHuman(p){
+  if(p.frozen>0){p.frozen--;return;}
+  const spd=BASE_SPEED*p.speedMult;
+  let dx=0,dy=0;
+  if(keysDown[p.keys.up])   dy=-spd;
+  if(keysDown[p.keys.down]) dy= spd;
+  if(keysDown[p.keys.left]) dx=-spd;
+  if(keysDown[p.keys.right])dx= spd;
+  if(dx) tryMove(p,dx,0);
+  if(dy) tryMove(p,0,dy);
+  p.dx=dx;p.dy=dy;
+  p.x=Math.max(BW/2,Math.min(W-BW/2,p.x));
+  p.y=Math.max(BH/2,Math.min(H-BH/2,p.y));
+}
+
+// ============================================================
+//  POWERUPS
+// ============================================================
+function applyFruit(player,fruit){
+  const t=fruit.type, other=player===p1?p2:p1;
+  let msg='';
+  switch(t.effect){
+    case 'points':{
+      const pts=t.value*(player.doublePoints>0?2:1);
+      player.score+=pts;
+      msg=`${player.name} +${pts} נקודות! ${t.emoji}`;
+      player.glowColor=t.color;player.glowTimer=60;break;
+    }
+    case 'speed':
+      player.speedMult=t.value;player.speedTimer=t.dur;
+      player.glowColor=t.color;player.glowTimer=t.dur;
+      player.lastPowerup={effect:'speed',value:t.value,remaining:t.dur,color:t.color,emoji:t.emoji};
+      msg=`${player.name} מהיר x${t.value}! ${t.emoji}`;break;
+    case 'freeze':
+      other.frozen=t.dur;
+      player.glowColor=t.color;player.glowTimer=60;
+      msg=`${player.name} הקפיא את ${other.name}! ❄️`;break;
+    case 'double':
+      player.doublePoints=t.dur;
+      player.glowColor=t.color;player.glowTimer=t.dur;
+      player.lastPowerup={effect:'double',value:2,remaining:t.dur,color:t.color,emoji:t.emoji};
+      msg=`${player.name} נקודות כפולות! ${t.emoji}`;break;
+    case 'eatall':
+      player.eatAll=t.dur;
+      player.glowColor=t.color;player.glowTimer=t.dur;
+      player.lastPowerup={effect:'eatall',value:0,remaining:t.dur,color:t.color,emoji:t.emoji};
+      msg=`${player.name} כולם אוכלים! ${t.emoji}`;break;
+    case 'steal':{
+      let stolen=null;
+      if(other.speedMult>1&&other.speedTimer>0){
+        stolen={effect:'speed',value:other.speedMult,remaining:other.speedTimer,color:'#ffff44',emoji:'🍋'};
+        other.speedMult=1;other.speedTimer=0;
+      } else if(other.doublePoints>0){
+        stolen={effect:'double',value:2,remaining:other.doublePoints,color:'#ff8833',emoji:'🍊'};
+        other.doublePoints=0;
+      } else if(other.eatAll>0){
+        stolen={effect:'eatall',value:0,remaining:other.eatAll,color:'#44ff88',emoji:'🍉'};
+        other.eatAll=0;
+      }
+      if(stolen){
+        if(stolen.effect==='speed'){player.speedMult=stolen.value;player.speedTimer=stolen.remaining;}
+        else if(stolen.effect==='double'){player.doublePoints=stolen.remaining;}
+        else if(stolen.effect==='eatall'){player.eatAll=stolen.remaining;}
+        other.glowColor='#ff0000';other.glowTimer=80;
+        player.glowColor='#ffaa00';player.glowTimer=80;
+        msg=`🥭 ${player.name} גנב ${stolen.emoji} מ${other.name}!`;
+      } else {
+        msg=`🥭 ${player.name} אכל מנגו — ל${other.name} אין כוח לגנוב!`;
+        player.glowColor='#ffaa00';player.glowTimer=40;
+      }
+      break;
+    }
+  }
+  setMsg(msg);
+  const el=document.getElementById('powerupMsg');
+  el.textContent=msg;el.style.color=t.color;
+  el.style.top=Math.min(player.y+40,460)+'px';el.style.opacity='1';
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>{el.style.opacity='0';},1600);
+}
+
+function resetPow(p){
+  p.speedMult=1;p.speedTimer=0;p.frozen=0;
+  p.doublePoints=0;p.eatAll=0;p.glowColor=null;p.glowTimer=0;p.lastPowerup=null;
+}
+
+// ============================================================
+//  DRAW
+// ============================================================
+function drawMaze(){
+  ctx.fillStyle='#0d0d2b';ctx.fillRect(0,0,W,H);
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(isWall(c,r)){
+    ctx.fillStyle='#0a2a5a';ctx.fillRect(c*BW,r*BH,BW,BH);
+    ctx.strokeStyle='#1a4a9a';ctx.lineWidth=1.5;
+    ctx.strokeRect(c*BW+1,r*BH+1,BW-2,BH-2);
+  }
+}
+
+function drawDots(){
+  ctx.fillStyle='#ffffff55';
+  for(const d of dots){
+    if(d.eaten) continue;
+    ctx.beginPath();ctx.arc(d.x,d.y,3,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawFruits(){
+  for(const f of fruits){
+    if(f.eaten) continue;
+    f.pulse+=0.08;
+    const sc=1+0.12*Math.sin(f.pulse);
+    ctx.save();ctx.translate(f.x,f.y);ctx.scale(sc,sc);
+    ctx.shadowColor=f.type.color;ctx.shadowBlur=16;
+    ctx.font=`${BH*0.7}px serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(f.type.emoji,0,2);
+    ctx.restore();
+    const bw=BW*0.8,bx=f.x-bw/2,by=f.y+BH*0.46;
+    ctx.fillStyle='#222';ctx.fillRect(bx,by,bw,3);
+    ctx.fillStyle=f.type.color;ctx.fillRect(bx,by,bw*(f.life/600),3);
+  }
+}
+
+function drawAccessory(p){
+  const pn=p===p1?1:2;
+  const sd=pn===1?saveData.p1:saveData.p2;
+  const acc=sd.equippedAcc;
+  if(!acc||p.isBot) return;
+  const item=SHOP_ITEMS.find(i=>i.id===acc);
+  if(!item) return;
+  ctx.save();ctx.translate(p.x,p.y);
+  ctx.font=`${SIZE*1.2}px serif`;
+  ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.fillText(item.emoji,0,-SIZE*0.6);
+  ctx.restore();
+}
+
+function drawPacman(p){
+  const m=0.15+0.2*Math.abs(Math.sin(Date.now()*0.008));
+  ctx.save();ctx.translate(p.x,p.y);
+  if(p.glowTimer>0){
+    p.glowTimer--;
+    ctx.beginPath();ctx.arc(0,0,SIZE+6,0,Math.PI*2);
+    ctx.strokeStyle=p.glowColor+'cc';ctx.lineWidth=3;ctx.stroke();
+  }
+  if(p.frozen>0) ctx.globalAlpha=0.5+0.4*Math.abs(Math.sin(Date.now()*0.02));
+  let angle=p.dx>0?0:p.dx<0?Math.PI:p.dy<0?-Math.PI/2:p.dy>0?Math.PI/2:0;
+  ctx.rotate(angle);
+  const g=ctx.createRadialGradient(0,0,2,0,0,SIZE);
+  g.addColorStop(0,'#ffffff88');g.addColorStop(1,p.color);
+  ctx.beginPath();ctx.moveTo(0,0);
+  ctx.arc(0,0,SIZE,m*Math.PI,(2-m)*Math.PI);ctx.closePath();
+  ctx.fillStyle=g;ctx.shadowColor=p.color;ctx.shadowBlur=15;ctx.fill();
+  ctx.rotate(-angle);
+  ctx.beginPath();ctx.arc(0,-SIZE*0.45,3,0,Math.PI*2);
+  ctx.fillStyle='#000';ctx.shadowBlur=0;ctx.fill();
+  ctx.restore();
+  drawAccessory(p);
+}
+
+function drawGhost(p){
+  ctx.save();ctx.translate(p.x,p.y);
+  ctx.translate(0,Math.sin(Date.now()*0.005)*2);
+  if(p.glowTimer>0){
+    p.glowTimer--;
+    ctx.beginPath();ctx.arc(0,0,SIZE+6,0,Math.PI*2);
+    ctx.strokeStyle=p.glowColor+'cc';ctx.lineWidth=3;ctx.stroke();
+  }
+  const frozen=p.frozen>0;
+  if(frozen){ctx.globalAlpha=0.45+0.3*Math.abs(Math.sin(Date.now()*0.02));ctx.shadowColor='#88ccff';}
+  else ctx.shadowColor=p.color;
+  ctx.shadowBlur=20;
+  ctx.fillStyle=frozen?'#88ccff':p.color;
+  ctx.beginPath();ctx.arc(0,-SIZE*0.3,SIZE,Math.PI,0);
+  ctx.lineTo(SIZE,SIZE*0.7);
+  for(let i=0;i<4;i++){
+    const dir=i%2===0?1:-1;
+    ctx.quadraticCurveTo(SIZE-i*(SIZE*0.5)-SIZE*0.25,SIZE*0.7+dir*SIZE*0.35,SIZE-i*(SIZE*0.5)-SIZE*0.5,SIZE*0.7);
+  }
+  ctx.lineTo(-SIZE,SIZE*0.7);ctx.closePath();ctx.fill();
+  ctx.shadowBlur=0;ctx.globalAlpha=1;
+  ctx.fillStyle='white';
+  ctx.beginPath();ctx.ellipse(-SIZE*0.3,-SIZE*0.2,SIZE*0.28,SIZE*0.35,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse( SIZE*0.3,-SIZE*0.2,SIZE*0.28,SIZE*0.35,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=frozen?'#003366':'#1a44cc';
+  ctx.beginPath();ctx.arc(-SIZE*0.3,-SIZE*0.2,SIZE*0.15,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc( SIZE*0.3,-SIZE*0.2,SIZE*0.15,0,Math.PI*2);ctx.fill();
+  if(frozen){ctx.font='11px serif';ctx.textAlign='center';ctx.fillStyle='#aaddff';ctx.fillText('❄',0,-SIZE*1.5);}
+  // bot badge
+  if(p.isBot){
+    ctx.font='9px serif';ctx.textAlign='center';ctx.fillStyle='#fff';
+    ctx.fillText('🤖',0,-SIZE*1.6);
+  }
+  ctx.restore();
+}
+
+function drawPlayer(p){
+  if(p.role==='pacman') drawPacman(p);
+  else drawGhost(p);
+}
+
+function drawTimer(){
+  const rem=Math.max(0,GAME_FRAMES-gameFrames);
+  const secs=Math.ceil(rem/60);
+  const m=Math.floor(secs/60),s=secs%60;
+  const el=document.getElementById('timer');
+  el.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+  if(secs<=30) el.classList.add('warn'); else el.classList.remove('warn');
+}
+
+function updateScores(){
+  document.getElementById('p1score').textContent=`שחקן 1 (${p1&&p1.role==='pacman'?'😁':'👻'}): ${p1?p1.score:0}`;
+  const n2=p2&&p2.isBot?'🤖 בוט':gameMode==='2p'?'שחקן 2':'';
+  document.getElementById('p2score').textContent=`${n2} (${p2&&p2.role==='pacman'?'😁':'👻'}): ${p2?p2.score:0}`;
+  document.getElementById('dia1').textContent=`💎 ${saveData.p1.diamonds}`;
+  document.getElementById('dia2').textContent=`💎 ${saveData.p2.diamonds}`;
+  document.getElementById('menuDia1').textContent=saveData.p1.diamonds;
+  document.getElementById('menuDia2').textContent=saveData.p2.diamonds;
+}
+function setMsg(m){document.getElementById('message').textContent=m;}
+
+// ============================================================
+//  ROLES
+// ============================================================
+function lotteryRoles(){
+  const roles=['pacman','ghost'];
+  if(Math.random()<0.5) roles.reverse();
+  p1.role=roles[0];p2.role=roles[1];
+  const ra=document.getElementById('roleAnnounce');
+  const n2=p2.isBot?'🤖 בוט':'שחקן 2';
+  document.getElementById('rA1').textContent=p1.role==='pacman'?'😁 שחקן 1 = פקמן!':'👻 שחקן 1 = רוח!';
+  document.getElementById('rA2').textContent=p2.role==='pacman'?`😁 ${n2} = פקמן!`:`👻 ${n2} = רוח!`;
+  document.getElementById('rA1').className='role-line '+(p1.role==='pacman'?'pacman-role':'ghost-role');
+  document.getElementById('rA2').className='role-line '+(p2.role==='pacman'?'pacman-role':'ghost-role');
+  ra.style.display='flex';
+  setTimeout(()=>{ra.style.display='none';setMsg('🍒 אכול פירות לכוחות מיוחדים!');},2200);
+}
+
+function resetPos(){
+  p1.x=1*BW+BW/2;p1.y=1*BH+BH/2;
+  p2.x=17*BW+BW/2;p2.y=11*BH+BH/2;
+  p1.dx=p1.dy=p2.dx=p2.dy=0;
+  botPath=[];botPathTimer=0;
+}
+
+// ============================================================
+//  MENU / GAME FLOW
+// ============================================================
+function selectMode(mode){
+  gameMode=mode;
+  document.getElementById('diffRow').style.display=mode==='bot'?'flex':'none';
+  document.getElementById('ctrl2lbl').textContent=mode==='bot'?'בוט: AI 🤖':'שחקן 2 W A S D';
+}
+
+function selectDiff(d){
+  botDifficulty=d;
+  [1,2,3].forEach(i=>{
+    const b=document.getElementById('db'+i);
+    b.classList.toggle('sel',i===d);
+  });
+}
+
+function goMenu(){
+  document.getElementById('endScreen').style.display='none';
+  document.getElementById('menuOv').style.display='flex';
+  updateScores();
+}
+
+function startFromMenu(){
+  document.getElementById('menuOv').style.display='none';
+  document.getElementById('endScreen').style.display='none';
+
+  const col1=getPlayerColor(1);
+  const col2=getPlayerColor(2);
+  p1=makePlayer(1,1,col1,{up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'},'שחקן 1');
+  p2=makePlayer(17,11,col2,{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD'},
+    gameMode==='bot'?'בוט':'שחקן 2');
+  p2.isBot=(gameMode==='bot');
+
+  resetPow(p1);resetPow(p2);
+  dots=makeDots();fruits=[];
+  fruitTimer=0;gameFrames=0;
+  resetPos();lotteryRoles();
+  gameRunning=true;updateScores();
+  if(animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+function newRound(){
+  dots=makeDots();fruits=[];fruitTimer=0;
+  resetPos();resetPow(p1);resetPow(p2);
+  lotteryRoles();updateScores();
+}
+
+// ============================================================
+//  DIAMONDS REWARD
+// ============================================================
+const DIAMOND_REWARDS={
+  1:{win:3,lose:0},   // easy
+  2:{win:6,lose:1},   // medium
+  3:{win:12,lose:2},  // hard
+};
+
+function endGame(){
+  gameRunning=false;
+  const end=document.getElementById('endScreen');
+  end.style.display='flex';
+  const wt=document.getElementById('winnerText');
+  const fs=document.getElementById('finalScores');
+  const ed=document.getElementById('earnedDia');
+
+  let dia1Earned=0, dia2Earned=0;
+  const playerWon=p1.score>p2.score;
+  const playerLost=p2.score>p1.score;
+
+  if(gameMode==='bot'){
+    const reward=DIAMOND_REWARDS[botDifficulty];
+    if(playerWon){ dia1Earned=reward.win; }
+    else if(playerLost){ dia1Earned=reward.lose; }
+  } else {
+    dia1Earned=playerWon?3:1;
+    dia2Earned=playerLost?1:3; // p2 wins if p1 lost, else p2 gets 1 (tie=both 1)
+    if(!playerWon&&!playerLost){ dia1Earned=1; dia2Earned=1; } // tie
+  }
+
+  saveData.p1.diamonds+=dia1Earned;
+  if(gameMode==='2p') saveData.p2.diamonds+=dia2Earned;
+  saveSave();
+
+  if(p1.score>p2.score){
+    wt.textContent='🏆 שחקן 1 מנצח!';wt.style.color='#ffe600';
+  } else if(p2.score>p1.score){
+    const n2=p2.isBot?'🤖 בוט':'שחקן 2';
+    wt.textContent=`🏆 ${n2} מנצח!`;wt.style.color='#ff4466';
+  } else {
+    wt.textContent='🤝 תיקו!';wt.style.color='#88ffcc';
+  }
+  fs.innerHTML=`שחקן 1: ${p1.score} נקודות<br>${p2.isBot?'🤖 בוט':'שחקן 2'}: ${p2.score} נקודות`;
+
+  let diaMsg='';
+  if(gameMode==='bot'){
+    if(dia1Earned>0) diaMsg=`שחקן 1 קיבל +${dia1Earned} 💎`;
+  } else {
+    diaMsg=`שחקן 1 +${dia1Earned} 💎  |  שחקן 2 +${dia2Earned} 💎`;
+  }
+  if(diaMsg){ ed.textContent=diaMsg; ed.style.display='block'; }
+  else { ed.textContent=''; }
+
+  document.getElementById('menuDia1').textContent=saveData.p1.diamonds;
+  document.getElementById('menuDia2').textContent=saveData.p2.diamonds;
+  document.getElementById('dia1').textContent=`💎 ${saveData.p1.diamonds}`;
+  document.getElementById('dia2').textContent=`💎 ${saveData.p2.diamonds}`;
+}
+
+// ============================================================
+//  SHOP
+// ============================================================
+function openShop(pn){
+  currentShopPlayer=pn||1;
+  renderShop();
+  document.getElementById('menuOv').style.display='none';
+  document.getElementById('shopOv').style.display='flex';
+}
+function closeShop(){
+  document.getElementById('shopOv').style.display='none';
+  document.getElementById('menuOv').style.display='flex';
+}
+
+function renderShop(){
+  const pn=currentShopPlayer;
+  const sd=pn===1?saveData.p1:saveData.p2;
+  const col=pn===1?'#ffe600':'#ff4466';
+  document.getElementById('shopTitle').textContent=`🛍 חנות שחקן ${pn}`;
+  document.getElementById('shopTitle').style.color=col;
+  document.getElementById('shopDiaCount').textContent=sd.diamonds;
+  const grid=document.getElementById('shopGrid');
+  grid.innerHTML='';
+  // For p2, hide yellow as default and show red as default
+  const defaultId=pn===1?'col_yellow':'col_red';
+  for(const item of SHOP_ITEMS){
+    const isDefault=item.id===defaultId;
+    const owned=sd.owned.includes(item.id)||isDefault;
+    const eqColor=item.type==='color'&&sd.equippedColor===item.id;
+    const eqAcc=item.type==='acc'&&sd.equippedAcc===item.id;
+    const equipped=eqColor||eqAcc;
+    const div=document.createElement('div');
+    div.className='shop-item'+(owned?' owned':'')+(equipped?' equipped':'');
+    let badge='';
+    if(equipped) badge='<div class="badge">מצויד</div>';
+    div.innerHTML=`${badge}<span class="si-emoji">${item.emoji}</span><span class="si-name">${item.name}</span>`+
+      `<span class="si-price ${owned?'owned':''}">${owned?(equipped?'✓ מצויד':'✓ בבעלות'):'💎 '+item.price}</span>`;
+    div.onclick=()=>shopClick(item.id);
+    grid.appendChild(div);
+  }
+}
+
+function shopClick(id){
+  const pn=currentShopPlayer;
+  const sd=pn===1?saveData.p1:saveData.p2;
+  const defaultId=pn===1?'col_yellow':'col_red';
+  const item=SHOP_ITEMS.find(i=>i.id===id);
+  if(!item) return;
+  const isDefault=item.id===defaultId;
+  const owned=sd.owned.includes(item.id)||isDefault;
+  if(!owned){
+    if(sd.diamonds<item.price){
+      setMsg(`שחקן ${pn}: אין מספיק 💎! (צריך ${item.price})`);
+      return;
+    }
+    sd.diamonds-=item.price;
+    sd.owned.push(item.id);
+    saveSave();
+  }
+  if(item.type==='color') sd.equippedColor=item.id;
+  else if(item.type==='acc') sd.equippedAcc=(sd.equippedAcc===item.id)?null:item.id;
+  saveSave();
+  renderShop();
+  document.getElementById('dia1').textContent=`💎 ${saveData.p1.diamonds}`;
+  document.getElementById('dia2').textContent=`💎 ${saveData.p2.diamonds}`;
+}
+
+// ============================================================
+//  MAIN LOOP
+// ============================================================
+function loop(){
+  if(!gameRunning) return;
+  animId=requestAnimationFrame(loop);
+  gameFrames++;
+
+  if(gameFrames>=GAME_FRAMES){
+    drawMaze();drawDots();drawFruits();drawPlayer(p1);drawPlayer(p2);
+    endGame();return;
+  }
+
+  if(caughtTimer>0){
+    caughtTimer--;
+    ctx.fillStyle=`rgba(255,0,0,${0.15*Math.abs(Math.sin(caughtTimer*0.3))})`;
+    ctx.fillRect(0,0,W,H);
+    if(caughtTimer===0) newRound();
+    return;
+  }
+
+  // timers
+  if(p1.doublePoints>0) p1.doublePoints--;
+  if(p2.doublePoints>0) p2.doublePoints--;
+  if(p1.eatAll>0) p1.eatAll--;
+  if(p2.eatAll>0) p2.eatAll--;
+  if(p1.speedTimer>0){p1.speedTimer--;if(p1.speedTimer===0)p1.speedMult=1;}
+  if(p2.speedTimer>0){p2.speedTimer--;if(p2.speedTimer===0)p2.speedMult=1;}
+
+  // movement
+  moveHuman(p1);
+  if(p2.isBot) moveBot(p2,p1);
+  else moveHuman(p2);
+
+  // spawn fruits
+  fruitTimer++;
+  if(fruitTimer>=180&&fruits.filter(f=>!f.eaten).length<4){spawnFruit();fruitTimer=0;}
+  for(const f of fruits) if(!f.eaten){f.life--;if(f.life<=0)f.eaten=true;}
+
+  // eat dots
+  for(const p of [p1,p2]){
+    if(p.role==='pacman'||p.eatAll>0){
+      for(const d of dots){
+        if(!d.eaten&&Math.hypot(p.x-d.x,p.y-d.y)<SIZE){
+          d.eaten=true;
+          p.score+=(p.doublePoints>0?2:1);
+        }
+      }
+    }
+  }
+
+  // eat fruits
+  for(const f of fruits){
+    if(f.eaten) continue;
+    for(const p of [p1,p2]){
+      if(Math.hypot(p.x-f.x,p.y-f.y)<SIZE+8){
+        f.eaten=true;applyFruit(p,f);break;
+      }
+    }
+  }
+
+  // catch
+  if(Math.hypot(p1.x-p2.x,p1.y-p2.y)<SIZE*1.6){
+    const ghost=p1.role==='ghost'?p1:p2;
+    if(ghost.frozen===0){
+      const pts=3*(ghost.doublePoints>0?2:1);
+      ghost.score+=pts;
+      setMsg(`💀 ${ghost.name} תפס את פקמן! +${pts} נקודות!`);
+      updateScores();caughtTimer=90;return;
+    }
+  }
+
+  // all dots
+  if(dots.filter(d=>!d.eaten).length===0){
+    const pac=p1.role==='pacman'?p1:p2;
+    const pts=5*(pac.doublePoints>0?2:1);
+    pac.score+=pts;
+    setMsg(`🎉 פקמן אכל הכל! +${pts} נקודות!`);
+    updateScores();caughtTimer=90;return;
+  }
+
+  drawMaze();drawDots();drawFruits();
+  drawPlayer(p1);drawPlayer(p2);
+  updateScores();drawTimer();
+  ctx.fillStyle='#334466';ctx.font='7px "Press Start 2P"';ctx.textAlign='center';
+  ctx.fillText(`נקודות: ${dots.filter(d=>!d.eaten).length}`,W/2,H-5);
+}
+
+// init
+drawMaze();
+p1={score:0,role:'pacman'};p2={score:0,role:'ghost',isBot:false};
+updateScores();
+</script>
+</body>
+</html>
